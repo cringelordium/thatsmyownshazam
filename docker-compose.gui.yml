@@ -1,0 +1,70 @@
+# Docker Compose специально для GUI приложения
+version: '3.8'
+
+services:
+  myshazam-gui:
+    build: .
+    container_name: myshazam-gui
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - DB_PATH=/app/data/fingerprints.db
+      # Настройки для GUI
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTHORITY}
+    # Полный доступ к хосту для GUI и аудио
+    network_mode: host
+    # Доступ к аудио устройствам
+    devices:
+      - /dev/snd:/dev/snd
+    # Привилегированный режим для доступа к устройствам
+    privileged: true
+    # X11 forwarding для GUI
+    volumes:
+      - ./audio_files:/app/audio_files
+      - ./data:/app/data
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY}:${XAUTHORITY}:rw
+    # Команда запуска GUI
+    command: python main.py --gui
+    restart: unless-stopped
+    # Зависимости
+    depends_on: []
+
+  # Сервис для добавления песен через CLI
+  myshazam-add:
+    build: .
+    container_name: myshazam-add
+    volumes:
+      - ./audio_files:/app/audio_files
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    # Команда для добавления песен
+    command: >
+      sh -c "
+        echo 'Добавление песен из директории audio_files...'
+        for file in /app/audio_files/*.mp3 /app/audio_files/*.wav /app/audio_files/*.flac; do
+          if [ -f \"$file\" ]; then
+            echo \"Добавляем: $file\"
+            python main.py --add-song \"$file\"
+          fi
+        done
+        echo 'Готово!'
+      "
+    depends_on:
+      - myshazam-gui
+
+  # Сервис для тестирования GUI
+  myshazam-gui-test:
+    build: .
+    container_name: myshazam-gui-test
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: python test.py
+    depends_on:
+      - myshazam-gui

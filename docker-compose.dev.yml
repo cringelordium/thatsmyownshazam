@@ -1,0 +1,73 @@
+# Docker Compose для разработки
+version: '3.8'
+
+services:
+  myshazam-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: myshazam-dev
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - DB_PATH=/app/data/fingerprints.db
+      # Режим разработки
+      - DEBUG=1
+      - LOG_LEVEL=DEBUG
+      # X11 forwarding
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTHORITY}
+    ports:
+      - "8000:8000"
+    # Для GUI приложения
+    network_mode: host
+    devices:
+      - /dev/snd:/dev/snd
+    privileged: true
+    volumes:
+      # Монтируем исходный код для hot reload
+      - .:/app
+      # Монтируем директорию с аудио файлами
+      - ./audio_files:/app/audio_files
+      # Монтируем директорию с базой данных
+      - ./data:/app/data
+      # X11 forwarding
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY}:${XAUTHORITY}:rw
+    # Команда для разработки (с автоперезагрузкой)
+    command: python -m watchdog -c "python main.py" -d /app
+    restart: unless-stopped
+
+  # Сервис для тестирования в режиме разработки
+  myshazam-test-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: myshazam-test-dev
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+      - DEBUG=1
+    command: python test.py
+    depends_on:
+      - myshazam-dev
+
+  # Сервис для запуска примеров
+  myshazam-example-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: myshazam-example-dev
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+      - DEBUG=1
+    command: python example.py
+    depends_on:
+      - myshazam-dev

@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  myshazam:
+    build: .
+    container_name: myshazam-app
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # Настройки базы данных
+      - DB_PATH=/app/data/fingerprints.db
+      # Настройки аудио
+      - SAMPLE_RATE=22050
+      - TARGET_ZONE_SIZE=10
+      - TARGET_ZONE_THRESHOLD=0.1
+      # Переменные для X11 forwarding (для GUI)
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTHORITY}
+    ports:
+      # Для будущего веб-интерфейса
+      - "8000:8000"
+    # Для GUI приложения нужен доступ к X11 (только для Linux)
+    network_mode: host
+    # Для доступа к микрофону
+    devices:
+      - /dev/snd:/dev/snd
+    # Привилегированный режим для доступа к аудио устройствам
+    privileged: true
+    volumes:
+      # Монтируем директорию с аудио файлами
+      - ./audio_files:/app/audio_files
+      # Монтируем директорию с базой данных для персистентности
+      - ./data:/app/data
+      # Монтируем директорию с конфигурацией
+      - ./config:/app/config
+      # X11 forwarding
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY}:${XAUTHORITY}:rw
+    # Команда запуска
+    command: python main.py
+    # Перезапуск при сбое
+    restart: unless-stopped
+
+  # Дополнительный сервис для тестирования
+  myshazam-test:
+    build: .
+    container_name: myshazam-test
+    volumes:
+      - ./data:/app/data
+      - ./audio_files:/app/audio_files
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: python test.py
+    depends_on:
+      - myshazam
+
+  # Сервис для примера использования
+  myshazam-example:
+    build: .
+    container_name: myshazam-example
+    volumes:
+      - ./data:/app/data
+      - ./audio_files:/app/audio_files
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: python example.py
+    depends_on:
+      - myshazam
+
+# Создаем именованные тома для персистентности данных
+volumes:
+  myshazam_data:
+    driver: local
+  myshazam_audio:
+    driver: local

@@ -1,0 +1,91 @@
+# Docker Compose для CLI использования (без GUI)
+version: '3.8'
+
+services:
+  myshazam-cli:
+    build: .
+    container_name: myshazam-cli
+    volumes:
+      - ./audio_files:/app/audio_files
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - DB_PATH=/app/data/fingerprints.db
+    # Команда для CLI режима
+    command: python main.py
+    restart: unless-stopped
+
+  # Сервис для добавления песен
+  myshazam-add-songs:
+    build: .
+    container_name: myshazam-add-songs
+    volumes:
+      - ./audio_files:/app/audio_files
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: >
+      sh -c "
+        echo 'Добавление песен из директории audio_files...'
+        for file in /app/audio_files/*.mp3 /app/audio_files/*.wav /app/audio_files/*.flac; do
+          if [ -f \"$file\" ]; then
+            echo \"Добавляем: $file\"
+            python main.py --add-song \"$file\"
+          fi
+        done
+        echo 'Готово!'
+      "
+    depends_on:
+      - myshazam-cli
+
+  # Сервис для распознавания
+  myshazam-recognize:
+    build: .
+    container_name: myshazam-recognize
+    volumes:
+      - ./audio_files:/app/audio_files
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: >
+      sh -c "
+        echo 'Распознавание песен из директории audio_files...'
+        for file in /app/audio_files/*.mp3 /app/audio_files/*.wav /app/audio_files/*.flac; do
+          if [ -f \"$file\" ]; then
+            echo \"Распознаем: $file\"
+            python main.py --recognize \"$file\"
+          fi
+        done
+        echo 'Готово!'
+      "
+    depends_on:
+      - myshazam-cli
+
+  # Сервис для показа списка песен
+  myshazam-list:
+    build: .
+    container_name: myshazam-list
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: python main.py --list-songs
+    depends_on:
+      - myshazam-cli
+
+  # Сервис для тестирования
+  myshazam-test:
+    build: .
+    container_name: myshazam-test
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: python test.py
+    depends_on:
+      - myshazam-cli

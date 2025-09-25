@@ -1,0 +1,24 @@
+# Docker Compose override файл для локальной разработки
+# Этот файл автоматически применяется к docker-compose.yml
+version: '3.8'
+
+services:
+  myshazam:
+    # Переопределяем команду для разработки
+    command: python main.py --gui
+    # Добавляем переменные окружения для разработки
+    environment:
+      - DEBUG=1
+      - LOG_LEVEL=DEBUG
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - DB_PATH=/app/data/fingerprints.db
+    # Монтируем исходный код для hot reload
+    volumes:
+      - .:/app
+      - ./audio_files:/app/audio_files
+      - ./data:/app/data
+    # Добавляем порт для отладки
+    ports:
+      - "8000:8000"
+      - "5678:5678"  # Для Python debugger

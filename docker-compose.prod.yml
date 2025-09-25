@@ -1,0 +1,81 @@
+# Docker Compose для продакшена
+version: '3.8'
+
+services:
+  myshazam-prod:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: myshazam-prod
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - DB_PATH=/app/data/fingerprints.db
+      # Продакшен настройки
+      - DEBUG=0
+      - LOG_LEVEL=INFO
+      # X11 forwarding
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTHORITY}
+    ports:
+      - "8000:8000"
+    # Для GUI приложения
+    network_mode: host
+    devices:
+      - /dev/snd:/dev/snd
+    privileged: true
+    volumes:
+      # Только необходимые директории
+      - myshazam_data:/app/data
+      - myshazam_audio:/app/audio_files
+      # X11 forwarding
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY}:${XAUTHORITY}:rw
+    # Команда для продакшена
+    command: python main.py
+    # Перезапуск при сбое
+    restart: always
+    # Ограничения ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Сервис для мониторинга (опционально)
+  myshazam-monitor:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: myshazam-monitor
+    volumes:
+      - myshazam_data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DB_PATH=/app/data/fingerprints.db
+    command: python -c "
+      import time
+      from music_recognizer import MusicRecognizer
+      while True:
+        try:
+          recognizer = MusicRecognizer()
+          stats = recognizer.get_database_stats()
+          print(f'Database stats: {stats}')
+          time.sleep(300)  # Каждые 5 минут
+        except Exception as e:
+          print(f'Monitor error: {e}')
+          time.sleep(60)
+      "
+    depends_on:
+      - myshazam-prod
+    restart: unless-stopped
+
+# Именованные тома для продакшена
+volumes:
+  myshazam_data:
+    driver: local
+  myshazam_audio:
+    driver: local

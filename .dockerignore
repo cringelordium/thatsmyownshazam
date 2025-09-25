@@ -1,0 +1,76 @@
+# Игнорируем ненужные файлы при сборке Docker образа
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Database files (будут созданы в контейнере)
+*.db
+*.sqlite
+*.sqlite3
+
+# Audio files (будут монтироваться как volume)
+audio_files/
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+
+# Data directory (будет монтироваться как volume)
+data/
+
+# Config directory (будет монтироваться как volume)
+config/
+
+# Documentation (не нужна в контейнере)
+*.md
+LICENSE
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
